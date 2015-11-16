@@ -27,7 +27,7 @@ Selector = None
 def apply_offers(request, basket):
     "Apply offers and discounts to cart"
     if not basket.is_empty:
-        Applicator().apply(request, basket)
+        Applicator().apply(basket, request.user, request)
 
 
 def assign_basket_strategy(basket, request):
@@ -134,11 +134,3 @@ def save_line_with_default_currency(line, *args, **kwargs):
     if not line.price_currency:
         line.price_currency = get_default_currency()
     return line.save(*args, **kwargs)
-
-
-def get_total_price(basket):
-    return Price(
-        getattr(basket,'currency', get_default_currency()),
-        basket.total_excl_tax,
-        incl_tax=basket.total_incl_tax
-    )

@@ -18,9 +18,10 @@ def overridable(name, default):
 
 
 class OscarSerializer(object):
-    field_mapping = dict(serializers.ModelSerializer.field_mapping, **{
-        oscar.models.fields.NullCharField: serializers.CharField
-    })
+    field_mapping = dict(
+        serializers.ModelSerializer.serializer_field_mapping, **{
+            oscar.models.fields.NullCharField: serializers.CharField
+        })
 
     def __init__(self, *args, **kwargs):
         """
@@ -44,19 +45,6 @@ class OscarSerializer(object):
             return val
 
         return native
-
-
-class OscarStrategySerializer(serializers.Serializer):
-    """Provides easy access to the price and stock information provided by
-        our strategy
-    """
-
-    def __init__(self, *args, **kwargs):
-        super(OscarStrategySerializer, self).__init__(*args, **kwargs)
-        request = self.context.get('request')
-        user = request.user if request is not None else None
-        strategy = Selector().strategy(request=request, user=user)
-        self.object.info = strategy.fetch_for_product(self.object)
 
 
 class OscarModelSerializer(OscarSerializer, serializers.ModelSerializer):
@@ -113,6 +101,7 @@ def session_id_from_parsed_session_uri(parsed_session_uri):
 
 
 def get_session(session_id, raise_on_create=False):
+    "get a session with the id specified."
     engine = import_module(settings.SESSION_ENGINE)
     session = engine.SessionStore(session_id)
 
@@ -121,5 +110,15 @@ def get_session(session_id, raise_on_create=False):
             raise exceptions.NotAuthenticated()
         else:
             session.save(must_create=True)
+    else:
+        # if we get an expired session from django,
+        # the session key will change after calling load.
+        # since the whole point of get_session is to retrieve a session
+        # with axactly the key specified, we have to clear the expired
+        # sessions and then get a new session.
+        session.load()
+        if session.session_key != session_id:
+            engine.SessionStore.clear_expired()
+            session = get_session(session_id, raise_on_create)
 
     return session
