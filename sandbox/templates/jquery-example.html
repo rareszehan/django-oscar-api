@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>OscarAPI JQuery example</title>
+
+<meta charset="utf-8">
+
+<style type="text/css">
+    li {
+        cursor: pointer;
+    }
+    li:hover {
+        color: orange;
+    }
+    div.login {
+        width: 100px;
+        float: left;
+    }
+</style>
+
+<script src="https://code.jquery.com/jquery-3.1.1.js"></script>
+
+<script type="text/javascript">
+    var API_URL = "http://localhost:8000/api";
+
+    function displayProducts() {
+        $.getJSON( API_URL + "/products/", function(data) {
+            var items = [];
+            $.each( data, function(item, product) {
+                var title = product.id
+                if (product.title != "") {
+                    var title = product.id + " (" + product.title + ")"
+                }
+                items.push( "<li class='product' title='Add to basket' data-url='" + product.url + "'>" + title + "</li>" );
+            });
+
+            $("#products").html("<ul>" + items.join("") + "</ul>")
+        });
+    }
+
+    function displayBasket() {
+        $.getJSON( API_URL + "/basket/", function(data) {
+            var line_url = data.lines;
+            $.getJSON( line_url, function(data) {
+                if (data.length != 0) {
+                    var items = [];
+                    $.each( data, function(item, line) {
+                        items.push( "<li class='line' title='Click to delete' data-url='" + line.url + "'>" + line.product + " (quantity:" + line.quantity + ")</li>" );
+                    });
+
+                    $("#basket").html("<ul>" + items.join("") + "</ul>");
+
+                } else {
+                    $("#basket").html("Basket is empty");
+                }
+            });
+        });
+    }
+
+    function addToBasket(url) {
+         var data = {
+            "url": url,
+            "quantity": 1
+        };
+
+         $.ajax({
+            type: 'POST',
+            data: data,
+            dataType: "json",
+            url: API_URL + '/basket/add-product/',
+        })
+        .done( function (data, status) {
+            displayBasket();
+         })
+    }
+
+    function removeFromBasket(url) {
+         $.ajax({
+            type: 'DELETE',
+            dataType: "json",
+            url: url,
+        })
+        .done( function (data, status) {
+            displayBasket();
+         })
+    }
+
+    function login() {
+         var data = {
+            "username": $("#username").val(),
+            "password": $("#password").val(),
+        };
+
+         $.ajax({
+            type: 'POST',
+            data: data,
+            dataType: "json",
+            url: API_URL + '/login/',
+        })
+        .done( function (data, status) {
+            location.reload();
+         })
+        .fail( function (data, status) {
+            alert(data.responseText);
+         });
+    }
+
+    function logout() {
+         $.ajax({
+            type: 'DELETE',
+            dataType: "json",
+            url: API_URL + '/login/',
+        })
+        .done( function (data, status) {
+            location.reload();
+         })
+        .fail( function (data, status) {
+            alert(data.responseText);
+         });
+    }
+
+    // Send csrf header, needed when logged in
+    $.ajaxSetup({
+        beforeSend: function(xhr, settings) {
+            var csrftoken = "{{ csrf_token }}";
+            xhr.setRequestHeader("X-CSRFToken", csrftoken);
+        }
+    });
+
+    // Add event handlers to buttons and elements
+    $(document).on('click', 'li.product', function() {
+        var productUrl = $(this).data('url');
+        addToBasket(productUrl);
+    });
+
+    $(document).on('click', 'li.line', function() {
+        var lineUrl = $(this).data('url');
+        removeFromBasket(lineUrl);
+    });
+
+    $(document).on('click', 'button#login', function() {
+        login();
+    });
+
+    $(document).on('click', 'button#logout', function() {
+        logout();
+    });
+
+    $(document).ready(function() {
+        displayProducts();
+        displayBasket();
+    });
+</script>
+
+</head>
+
+<body>
+    <h1>OscarAPI JQuery example</h1>
+
+    <p>You are logged in as <i>{{ request.user }}</i></p>
+    {% if request.user.is_authenticated %}
+    <h2>Logout</h2>
+    <p><button id="logout">Logout</button></p>
+    {% else %}
+    <h2>Login</h2>
+    <p><div class="login">Username</div> <input type="text" name="username" id="username"></p>
+    <p><div class="login">Password:</div> <input type="password" name="password" id="password"></p>
+    <p><button id="login">Login</button></p>
+    {% endif %}
+
+    <h2>Available products</h2>
+    <div id="products"></div>
+
+    <h2>What's in the basket</h2>
+    <div id="basket"></div>
+</body>
+</html>
+
