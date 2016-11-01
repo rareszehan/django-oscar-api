@@ -74,7 +74,7 @@
          })
     }
 
-    function removeFromBasket(url) {
+    function deleteBasketLine(url) {
          $.ajax({
             type: 'DELETE',
             dataType: "json",
@@ -135,7 +135,7 @@
 
     $(document).on('click', 'li.line', function() {
         var lineUrl = $(this).data('url');
-        removeFromBasket(lineUrl);
+        deleteBasketLine(lineUrl);
     });
 
     $(document).on('click', 'button#login', function() {
