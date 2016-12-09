@@ -1,3 +1,4 @@
+import six
 import warnings
 
 from django.conf import settings
@@ -283,7 +284,7 @@ class CheckoutSerializer(serializers.Serializer, OrderPlacementMixin):
                 guest_email=validated_data.get('guest_email') or ''
             )
         except ValueError as e:
-            raise exceptions.NotAcceptable(e.message)
+            raise exceptions.NotAcceptable(six.text_type(e))
 
     def _shipping_method(self, request, basket,
                          shipping_method_code, shipping_address):
